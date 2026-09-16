@@ -220,8 +220,8 @@ def twist_to_se3(xi, theta=1):
     omega = xi[3:6]
     omega_hat = R3_to_so3(omega)
     xi_hat = np.zeros((4,4))
-    xi_hat[0:3, 0:3] = omega_hat
-    xi_hat[0:3,3]=v
+    xi_hat[0:3, 0:3] = omega_hat * theta
+    xi_hat[0:3,3]=v * theta
     return xi_hat
 
 
