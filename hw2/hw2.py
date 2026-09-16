@@ -18,6 +18,9 @@ def box_pose_in_world(t, box_speed, box_distance):
             array.
     '''
     g = np.eye(4)
+    g[0,3] = box_speed*t
+    g[1,3] = box_distance
+
     return g
 
 
@@ -35,7 +38,7 @@ def box_twist_in_world(box_speed):
             {0} as a numpy array.
     '''
     xi = np.array([
-        0,
+        box_speed,
         0,
         0,
         0,
@@ -69,7 +72,13 @@ def camera_pose_in_world(t, camera_angular_speed, camera_height):
             numpy.matmul
             numpy.eye
     '''
-    g = np.eye(4)
+    theta = camera_angular_speed * t
+    g = np.array([
+        [np.cos(theta), 0, np.sin(theta), 0],
+        [-np.sin(theta), 0, np.cos(theta), 0],
+        [0, -1, 0, camera_height],
+        [0,0,0,1]
+    ])
     return g
 
 
@@ -95,7 +104,7 @@ def camera_twist_in_world(camera_angular_speed):
         0,
         0,
         0,
-        0
+        -camera_angular_speed
     ])
     return xi
 
@@ -131,5 +140,16 @@ def box_pose_in_camera(
         Note: Feel free to use one or more of the other functions you have
         implemented in this file.
     '''
-    g = np.eye(4)
+    theta = camera_angular_speed * t
+    vt = box_speed * t
+    c = np.cos(theta)
+    s = np.sin(theta)
+    d = box_distance
+    h = camera_height
+    g = np.array([
+        [c, -s, 0, c*vt-s*d],
+        [0,0,-1,h],
+        [s,c,0,s*vt+c*d],
+        [0,0,0,1]
+    ])
     return g
