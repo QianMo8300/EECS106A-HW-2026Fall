@@ -246,7 +246,11 @@ def rotations_from_s(s):
     Returns:
         A SciPy ``Rotation`` object containing ``N`` rotations.
     """
-    angles = None  # TODO YOUR CODE HERE
+    angles =  np.stack([
+        0.4*np.sin(s),
+        0.3*np.sin(2*s),
+        s
+    ], axis = 1) # TODO YOUR CODE HERE
     if angles is None:
         raise NotImplementedError
     return Rot.from_euler("XYZ", angles)
@@ -278,7 +282,7 @@ def make_dataset(seed=0):
         - ``R_sweep``: shape ``(4000, 3, 3)`` sweep rotation matrices.
     """
     rng = np.random.default_rng(seed)
-    s0 = None  # TODO YOUR CODE HERE
+    s0 = rng.uniform(0, 2*np.pi,size=500)  # TODO YOUR CODE HERE
     if s0 is None:
         raise NotImplementedError
     s = np.concatenate([s0, s0 + 2 * np.pi])
@@ -309,21 +313,24 @@ def decode_matrix(predictions):
         NumPy array with shape ``(N, 3, 3)`` containing valid rotations.
         Reshape each row and project it onto SO(3) with ``renormalize_SO3``.
     """
+    matrices = predictions.reshape(-1, 3, 3)
+    return np.stack([renormalize_SO3(R) for R in matrices], axis=0)
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+
 
 def decode_euler(predictions):
     """Decode intrinsic XYZ Euler-angle predictions.
 
     Args:
-        predictions: NumPy array with shape ``(N, 3)``.
+        predictions: NumPyff array with shape ``(N, 3)``.
 
     Returns:
         NumPy array with shape ``(N, 3, 3)``. Capitalization matters: use
         ``Rot.from_euler("XYZ", predictions)``.
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    R = Rot.from_euler("XYZ", predictions)
+    return R.as_matrix()
 
 def encode_exponential(rotations):
     """Encode rotation matrices as exponential coordinates.
@@ -336,7 +343,7 @@ def encode_exponential(rotations):
         ``SO3 -> R3`` conversion (use kin_func_skeleton), which is ``log(R)^vee``.
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    return np.stack([so3_to_R3(SO3_to_so3(R)) for R in rotations], axis = 0)
 
 def decode_exponential(vectors):
     """Decode exponential coordinates into rotation matrices.
@@ -349,7 +356,7 @@ def decode_exponential(vectors):
         ``R3 -> SO3`` (use kin_func_skeleton).
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    return np.stack([so3_to_SO3(R3_to_so3(v)) for v in vectors], axis = 0)
 
 def normalize_quaternions(quaternions):
     """Normalize predicted quaternions before decoding them.
@@ -363,7 +370,14 @@ def normalize_quaternions(quaternions):
         Ensure we don't divide by zero!
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    q = quaternions.astype(float).copy()
+    for i in range(len(q)):
+        norm = np.linalg.norm(q[i])
+        if norm!=0:
+            q[i] = q[i]/norm
+        else:
+            q[i] = q[i]/1e-12
+    return q
 
 def canonicalize_quaternions(quaternions):
     """Apply the ``w >= 0`` quaternion-label convention.
@@ -377,7 +391,13 @@ def canonicalize_quaternions(quaternions):
         component is negative by ``-1``. Do not modify the input array.
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    q = quaternions.copy()
+    for i in range(len(q)):
+        w=q[i][3]
+        if w < 0:
+            q[i]=-q[i]
+    return q
+
 
 def decode_quaternions(predictions):
     """Decode raw quaternion predictions.
@@ -391,7 +411,9 @@ def decode_quaternions(predictions):
         ``normalize_quaternions`` before passing them to ``Rot.from_quat``.
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    normalized = normalize_quaternions(predictions)
+    rotations = Rot.from_quat(normalized)
+    return rotations.as_matrix()
 
 def encode_6d(rotations):
     """Encode rotation matrices using the 6D representation.
@@ -403,8 +425,17 @@ def encode_6d(rotations):
         NumPy array with shape ``(N, 6)``. Each row contains the first
         column of its rotation followed by the second column.
     """
+    encoded = []
+    for R in rotations:
+        first = R[:,0]
+        second = R[:,1]
+        vector_6d = np.concatenate([
+            first,
+            second
+        ])    
+        encoded.append(vector_6d)
+    return np.stack(encoded,axis=0)
     # TODO YOUR CODE HERE
-    raise NotImplementedError
 
 def decode_6d(vectors):
     """Decode 6D predictions using the stated Gram--Schmidt procedure.
@@ -419,7 +450,18 @@ def decode_6d(vectors):
         use their cross product as the third rotation-matrix column.
     """
     # TODO YOUR CODE HERE
-    raise NotImplementedError
+    decoded = []
+    for v in vectors:
+        a1 = v[:3]
+        a2 = v[3:]
+        b1 = a1/np.linalg.norm(a1)
+        projection = np.dot(a2,b1) *b1
+        a2_per = a2 - projection
+        b2 = a2_per/np.linalg.norm(a2_per)
+        b3 = np.cross(b1,b2)
+        R = np.stack([b1,b2,b3], axis =1)
+        decoded.append(R)
+    return np.stack(decoded,axis=0)
 
 
 # ============================= PROVIDED: EXPERIMENTS =============================
