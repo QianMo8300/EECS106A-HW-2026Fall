@@ -23,7 +23,30 @@ def trajectory(t):
         frame.
     """
     # TODO
-    return ...
+    phi = K * np.sin(t)
+    st, ct = np.sin(t), np.cos(t)
+    sp, cp = np.sin(phi), np.cos(phi)
+
+    p = np.array([
+        -L2 * st,
+        L2 * ct,
+        L1 + L4 - L4 * ct,
+    ]) + np.array([
+        -L3 * st * sp,
+        L3 * ct * sp,
+        -L3 * cp,
+    ])
+
+    Bx = np.array([-ct, -st, 0.0])
+    Bz = np.array([sp * st, -sp * ct, cp])
+    # By = -np.array([cp * st, -cp * ct, sp]) 
+    By = np.cross(Bz, Bx)
+    R = np.column_stack((Bx, By, Bz))
+
+    g = np.eye(4)
+    g[:3, :3] = R
+    g[:3, 3] = p
+    return g
 
 
 def body_velocity(t):
@@ -40,7 +63,41 @@ def body_velocity(t):
     inverse_SE3 from kin_func_skeleton inverts the pose.
     """
     # TODO
-    return ...
+    phi = K * np.sin(t)
+    phid = K * np.cos(t)                  
+    st, ct = np.sin(t), np.cos(t)
+    sp, cp = np.sin(phi), np.cos(phi)
+
+    pdot = np.array([
+        -L2 * ct,
+        -L2 * st,
+        L4 * st,
+    ]) + np.array([
+        -L3 * ct * sp - L3 * st * cp * phid,
+        -L3 * st * sp + L3 * ct * cp * phid,
+        L3 * sp * phid,
+    ])
+
+    dBx = np.array([st, -ct, 0.0])
+    dBy = np.array([
+        ct * cp - st * sp * phid,
+        st * cp + ct * sp * phid,
+        -cp * phid,
+    ])
+
+    dBz = np.array([
+        ct * sp + st * cp * phid,
+        st * sp - ct * cp * phid,
+        -sp * phid,
+    ])
+    # dBy = np.cross(dBz, Bx) + np.cross(Bz, dBx)
+    Rdot = np.column_stack((dBx, dBy, dBz))
+
+    gdot = np.zeros((4, 4))
+    gdot[:3, :3] = Rdot
+    gdot[:3, 3] = pdot
+
+    return inverse_SE3(trajectory(t)) @ gdot
 
 
 def euler_step(pose, velocity_hat, dt):
@@ -61,4 +118,7 @@ def euler_step(pose, velocity_hat, dt):
     to the updated pose to correct floating-point drift in its rotation.
     """
     # TODO
-    return ...
+    xi = se3_to_twist(velocity_hat)        
+    increment = twist_to_SE3(xi, dt)  
+    new_pose = pose @ increment     
+    return renormalize_SE3(new_pose)
