@@ -172,7 +172,7 @@ def jacobian_inverse_kinematics(
         and history has shape ``(M, N)``. Include the initial joint values
         and every update, so ``1 <= M <= max_iterations + 1`` and
         ``theta == history[-1]``. Return the latest values even if the target
-        is not reached. 
+        is not reached.
     """
 
     # TODO
