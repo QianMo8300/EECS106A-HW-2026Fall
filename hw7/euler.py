@@ -26,7 +26,19 @@ def euler_jacobian(theta):
         spatial angular velocity.
     """
     # TODO
-    return ...
+    omega1 = np.array([0, 0, 1])
+    omega2 = np.array([0, 1, 0])
+    omega3 = np.array([1, 0, 0])
+
+    R1 = so3_to_SO3(R3_to_so3(omega1), theta[0])
+    R2 = so3_to_SO3(R3_to_so3(omega2), theta[1])
+
+    J = np.column_stack((
+        omega1,
+        R1 @ omega2,
+        R1 @ R2 @ omega3
+    ))
+    return J
 
 
 def manipulability(jacobian):
@@ -40,7 +52,10 @@ def manipulability(jacobian):
         Jacobian has zero manipulability. ``np.linalg.svd`` may be useful.
     """
     # TODO
-    return ...
+    singular_values = np.linalg.svd(jacobian, compute_uv=False)
+
+    mu = np.prod(singular_values)
+    return mu
 
 
 def main():
